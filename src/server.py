@@ -33,7 +33,7 @@ def _open_latest_db() -> sqlite3.Connection:
     return sqlite3.connect(tmp.name)
 
 @mcp.tool(description="Return recent articles from the last `hours`.")
-def latest(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
+def latest_articles(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
     conn = _open_latest_db()
     cur = conn.cursor()
     cur.execute("""
@@ -46,6 +46,29 @@ def latest(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
     rows = cur.fetchall()
     conn.close()
     return [{"title": r[0], "url": r[1], "source": r[2], "published_at": r[3]} for r in rows]
+
+@mcp.tool(description="Return the most recent YouTube videos in the last `hours`.")
+def latest_videos(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Example: latest_videos(hours=24, limit=20)
+    Returns YouTube videos stored in the DB, filtered by recency.
+    """
+    conn = _open_latest_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT title, url, channel_name, published_at
+        FROM videos
+        WHERE published_at >= datetime('now', ?)
+        ORDER BY published_at DESC
+        LIMIT ?
+    """, (f'-{hours} hours', limit))
+    rows = cur.fetchall()
+    conn.close()
+    return [
+        {"title": r[0], "url": r[1], "channel": r[2], "published_at": r[3]}
+        for r in rows
+    ]
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
