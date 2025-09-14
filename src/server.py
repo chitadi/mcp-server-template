@@ -17,20 +17,6 @@ def get_server_info() -> dict:
         "python_version": os.sys.version.split()[0]
     }
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    host = "0.0.0.0"
-    
-    print(f"Starting FastMCP server on {host}:{port}")
-    
-    mcp.run(
-        transport="http",
-        host=host,
-        port=port,
-        stateless_http=True
-    )
-
-
 # src/server.py
 import os, sqlite3, tempfile, requests
 from typing import List, Dict, Any
@@ -107,6 +93,19 @@ def sources(hours: int = 24) -> List[Dict[str, Any]]:
     rows = cur.fetchall()
     conn.close()
     return [{"source": r[0], "count": r[1]} for r in rows]
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    host = "0.0.0.0"
+    
+    print(f"Starting FastMCP server on {host}:{port}")
+    
+    mcp.run(
+        transport="http",
+        host=host,
+        port=port,
+        stateless_http=True
+    )
 
 # use npx.cmd @modelcontextprotocol/inspector on cmd to reach the dashboard and enter the url 
 # https://fastmcp-server-zsi6.onrender.com/mcp for the mcp to be connected? then text poke it should work
