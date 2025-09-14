@@ -53,11 +53,8 @@ def _open_latest_db() -> sqlite3.Connection:
     tmp.flush()
     return sqlite3.connect(tmp.name)
 
-@mcp.tool
+@mcp.tool(description="Return the most recent articles in the last `hours`.")
 def latest(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
-    """
-    Return the most recent articles in the last `hours`.
-    """
     conn = _open_latest_db()
     cur = conn.cursor()
     cur.execute("""
@@ -74,10 +71,9 @@ def latest(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
         for r in rows
     ]
 
-@mcp.tool
+@mcp.tool(description="Keyword search over titles/urls within the last `hours`.")
 def search(q: str, hours: int = 48, limit: int = 50) -> List[Dict[str, Any]]:
     """
-    Keyword search over titles/urls within the last `hours`.
     Example: q='startup' or q='fintech'
     """
     conn = _open_latest_db()
@@ -97,11 +93,8 @@ def search(q: str, hours: int = 48, limit: int = 50) -> List[Dict[str, Any]]:
         for r in rows
     ]
 
-@mcp.tool
+@mcp.tool(description="Count of articles per source in the last `hours`.")
 def sources(hours: int = 24) -> List[Dict[str, Any]]:
-    """
-    Count of articles per source in the last `hours`.
-    """
     conn = _open_latest_db()
     cur = conn.cursor()
     cur.execute("""
@@ -114,3 +107,6 @@ def sources(hours: int = 24) -> List[Dict[str, Any]]:
     rows = cur.fetchall()
     conn.close()
     return [{"source": r[0], "count": r[1]} for r in rows]
+
+# use npx.cmd @modelcontextprotocol/inspector on cmd to reach the dashboard and enter the url 
+# https://fastmcp-server-zsi6.onrender.com/mcp for the mcp to be connected? then text poke it should work
