@@ -29,3 +29,88 @@ if __name__ == "__main__":
         port=port,
         stateless_http=True
     )
+
+
+# src/server.py
+import os, sqlite3, tempfile, requests
+from typing import List, Dict, Any
+
+# ⬇️ Add these imports beside the template's existing imports
+from mcp import mcp  # this exists in the template
+
+# You can also wire this via environment variable on Render later
+DB_URL = os.getenv(
+    "DB_URL",
+    "https://raw.githubusercontent.com/chitadi/news-agent-poke-mcp/data/newsletter.db"
+)
+
+def _open_latest_db() -> sqlite3.Connection:
+    """Download the latest SQLite DB from GitHub raw and open a temp sqlite connection."""
+    resp = requests.get(DB_URL, timeout=20)
+    resp.raise_for_status()
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+    tmp.write(resp.content)
+    tmp.flush()
+    return sqlite3.connect(tmp.name)
+
+@mcp.tool
+def latest(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Return the most recent articles in the last `hours`.
+    """
+    conn = _open_latest_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT title, url, source_name, published_at
+        FROM articles
+        WHERE published_at >= datetime('now', ?)
+        ORDER BY published_at DESC
+        LIMIT ?
+    """, (f'-{hours} hours', limit))
+    rows = cur.fetchall()
+    conn.close()
+    return [
+        {"title": r[0], "url": r[1], "source": r[2], "published_at": r[3]}
+        for r in rows
+    ]
+
+@mcp.tool
+def search(q: str, hours: int = 48, limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Keyword search over titles/urls within the last `hours`.
+    Example: q='startup' or q='fintech'
+    """
+    conn = _open_latest_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT title, url, source_name, published_at
+        FROM articles
+        WHERE published_at >= datetime('now', ?)
+          AND (title LIKE ? OR url LIKE ?)
+        ORDER BY published_at DESC
+        LIMIT ?
+    """, (f'-{hours} hours', f'%{q}%', f'%{q}%', limit))
+    rows = cur.fetchall()
+    conn.close()
+    return [
+        {"title": r[0], "url": r[1], "source": r[2], "published_at": r[3]}
+        for r in rows
+    ]
+
+@mcp.tool
+def sources(hours: int = 24) -> List[Dict[str, Any]]:
+    """
+    Count of articles per source in the last `hours`.
+    """
+    conn = _open_latest_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT source_name, COUNT(*)
+        FROM articles
+        WHERE published_at >= datetime('now', ?)
+        GROUP BY source_name
+        ORDER BY COUNT(*) DESC
+    """, (f'-{hours} hours',))
+    rows = cur.fetchall()
+    conn.close()
+    return [{"source": r[0], "count": r[1]} for r in rows]
