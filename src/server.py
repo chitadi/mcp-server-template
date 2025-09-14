@@ -47,21 +47,21 @@ def latest(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
     conn.close()
     return [{"title": r[0], "url": r[1], "source": r[2], "published_at": r[3]} for r in rows]
 
-@mcp.tool(description="Keyword search over titles/urls within the last `hours`.")
-def search(q: str, hours: int = 48, limit: int = 50) -> List[Dict[str, Any]]:
-    conn = _open_latest_db()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT title, url, source_name, published_at
-        FROM articles
-        WHERE published_at >= datetime('now', ?)
-          AND (title LIKE ? OR url LIKE ?)
-        ORDER BY published_at DESC
-        LIMIT ?
-    """, (f'-{hours} hours', f'%{q}%', f'%{q}%', limit))
-    rows = cur.fetchall()
-    conn.close()
-    return [{"title": r[0], "url": r[1], "source": r[2], "published_at": r[3]} for r in rows]
+# @mcp.tool(description="Keyword search over titles/urls within the last `hours`.")
+# def search(q: str, hours: int = 48, limit: int = 50) -> List[Dict[str, Any]]:
+#     conn = _open_latest_db()
+#     cur = conn.cursor()
+#     cur.execute("""
+#         SELECT title, url, source_name, published_at
+#         FROM articles
+#         WHERE published_at >= datetime('now', ?)
+#           AND (title LIKE ? OR url LIKE ?)
+#         ORDER BY published_at DESC
+#         LIMIT ?
+#     """, (f'-{hours} hours', f'%{q}%', f'%{q}%', limit))
+#     rows = cur.fetchall()
+#     conn.close()
+#     return [{"title": r[0], "url": r[1], "source": r[2], "published_at": r[3]} for r in rows]
 
 # @mcp.tool(description="Count of articles per source in the last `hours`.")
 # def sources(hours: int = 24) -> List[Dict[str, Any]]:
