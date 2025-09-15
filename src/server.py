@@ -33,7 +33,7 @@ def open_latest_db() -> sqlite3.Connection:
     return sqlite3.connect(tmp.name)
 
 @mcp.tool(description="Return recent articles from the last `hours`.")
-def latest_articles(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
+def latest_articles(hours: int = 24, limit: int = 1000) -> List[Dict[str, Any]]:
     conn = open_latest_db()
     cur = conn.cursor()
     cur.execute("""
