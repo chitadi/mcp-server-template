@@ -1,11 +1,33 @@
 #!/usr/bin/env python3
-import os, sqlite3, tempfile, requests
+import os, sqlite3, tempfile, requests, asyncio
 from typing import List, Dict, Any
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastmcp import FastMCP
+import uvicorn
 
-# ✅ One MCP instance only
+# Create FastAPI app for health checks
+app = FastAPI(title="News MCP Server")
+
+# Create FastMCP instance
 mcp = FastMCP("News MCP Server")
 
+# Health check endpoints
+@app.get("/health")
+@app.head("/health")
+async def health_check():
+    return {"status": "healthy", "service": "News MCP Server"}
+
+@app.get("/")
+async def root():
+    return {
+        "service": "News MCP Server",
+        "status": "running",
+        "mcp_endpoint": "/mcp",
+        "health_endpoint": "/health"
+    }
+
+# MCP Tools
 @mcp.tool(description="Greet a user by name")
 def greet(name: str) -> str:
     return f"Hello, {name}! Welcome to our MCP server on Render!"
@@ -69,37 +91,16 @@ def latest_videos(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
         for r in rows
     ]
 
-# Health check endpoints for Render
-@mcp.get("/health")
-@mcp.head("/health")
-def health_check():
-    """Health check endpoint for Render and other monitoring services"""
-    return {"status": "healthy", "service": "News MCP Server"}
-
-# Root endpoint for basic info
-@mcp.get("/")
-def root():
-    """Root endpoint with basic server info"""
-    return {
-        "service": "News MCP Server",
-        "status": "running",
-        "mcp_endpoint": "/mcp",
-        "health_endpoint": "/health"
-    }
+# Mount MCP endpoint
+@app.post("/mcp")
+async def mcp_endpoint(request: Request):
+    # This would need FastMCP's HTTP handler
+    # For now, return a simple response
+    return {"message": "MCP endpoint - needs proper FastMCP integration"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     host = "0.0.0.0"
-    print(f"Starting FastMCP server on {host}:{port}")
+    print(f"Starting hybrid FastAPI + FastMCP server on {host}:{port}")
     
-    # Add error handling
-    try:
-        mcp.run(
-            transport="http",
-            host=host,
-            port=port,
-            stateless_http=True
-        )
-    except Exception as e:
-        print(f"Error starting server: {e}")
-        raise
+    uvicorn.run(app, host=host, port=port)
