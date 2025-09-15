@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os, sqlite3, tempfile, requests
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from fastmcp import FastMCP
 
 # ✅ One MCP instance only
@@ -32,38 +32,78 @@ def open_latest_db() -> sqlite3.Connection:
     tmp.flush()
     return sqlite3.connect(tmp.name)
 
-@mcp.tool(description="Return recent articles from the last `hours`.")
-def latest_articles(hours: int = 24, limit: int = 1000) -> List[Dict[str, Any]]:
+# --- Categories ---
+VALID_CATEGORIES = {"tech", "startups", "business", "politics", "finance", "miscellaneous"}
+
+@mcp.tool(description="Return recent articles from the last `hours`, optionally filtered by one or more categories.")
+def latest_articles(
+    hours: int = 24,
+    limit: int = 1000,
+    categories: Optional[List[str]] = None
+) -> List[Dict[str, Any]]:
     conn = open_latest_db()
     cur = conn.cursor()
-    cur.execute("""
-        SELECT title, url, source_name, published_at
+
+    query = """
+        SELECT title, url, source_name, category, published_at
         FROM articles
         WHERE published_at >= datetime('now', ?)
-        ORDER BY published_at DESC
-        LIMIT ?
-    """, (f'-{hours} hours', limit))
+    """
+    params = [f'-{hours} hours']
+
+    # ✅ Default to all categories if none provided
+    if not categories:
+        categories = list(VALID_CATEGORIES)
+
+    valid = [c.lower() for c in categories if c.lower() in VALID_CATEGORIES]
+    if valid:
+        placeholders = ",".join("?" for _ in valid)
+        query += f" AND category IN ({placeholders})"
+        params.extend(valid)
+
+    query += " ORDER BY published_at DESC LIMIT ?"
+    params.append(limit)
+
+    cur.execute(query, params)
     rows = cur.fetchall()
     conn.close()
-    return [{"title": r[0], "url": r[1], "source": r[2], "published_at": r[3]} for r in rows]
 
-@mcp.tool(description="Return the most recent YouTube videos in the last `hours`.")
-def latest_videos(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
+    return [
+        {"title": r[0], "url": r[1], "source": r[2], "category": r[3], "published_at": r[4]}
+        for r in rows
+    ]
+
+@mcp.tool(description="Return the most recent YouTube videos in the last `hours`, optionally filtered by channel.")
+def latest_videos(
+    hours: int = 24,
+    limit: int = 50,
+    channel: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
-    Example: latest_videos(hours=24, limit=20)
-    Returns YouTube videos stored in the DB, filtered by recency.
+    Example: latest_videos(hours=24, limit=20, channel='Bloomberg')
+    Returns YouTube videos stored in the DB, filtered by recency and optionally channel.
     """
     conn = open_latest_db()
     cur = conn.cursor()
-    cur.execute("""
+
+    query = """
         SELECT title, url, channel_name, published_at
         FROM videos
         WHERE published_at >= datetime('now', ?)
-        ORDER BY published_at DESC
-        LIMIT ?
-    """, (f'-{hours} hours', limit))
+    """
+    params = [f'-{hours} hours']
+
+    if channel:
+        query += " AND channel_name = ?"
+        params.append(channel)
+
+    query += " ORDER BY published_at DESC LIMIT ?"
+    params.append(limit)
+
+    cur.execute(query, params)
     rows = cur.fetchall()
     conn.close()
+
     return [
         {"title": r[0], "url": r[1], "channel": r[2], "published_at": r[3]}
         for r in rows
@@ -73,7 +113,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     host = "0.0.0.0"
     print(f"Starting FastMCP server on {host}:{port}")
-    
+
     try:
         mcp.run(
             transport="http",
