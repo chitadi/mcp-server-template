@@ -24,7 +24,7 @@ DB_URL = os.getenv(
     "https://raw.githubusercontent.com/chitadi/news-agent-poke-mcp/data/newsletter.db"
 )
 
-def _open_latest_db() -> sqlite3.Connection:
+def open_latest_db() -> sqlite3.Connection:
     resp = requests.get(DB_URL, timeout=20)
     resp.raise_for_status()
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
@@ -34,7 +34,7 @@ def _open_latest_db() -> sqlite3.Connection:
 
 @mcp.tool(description="Return recent articles from the last `hours`.")
 def latest_articles(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
-    conn = _open_latest_db()
+    conn = open_latest_db()
     cur = conn.cursor()
     cur.execute("""
         SELECT title, url, source_name, published_at
@@ -53,7 +53,7 @@ def latest_videos(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
     Example: latest_videos(hours=24, limit=20)
     Returns YouTube videos stored in the DB, filtered by recency.
     """
-    conn = _open_latest_db()
+    conn = open_latest_db()
     cur = conn.cursor()
     cur.execute("""
         SELECT title, url, channel_name, published_at
@@ -69,14 +69,37 @@ def latest_videos(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
         for r in rows
     ]
 
+# Health check endpoints for Render
+@mcp.get("/health")
+@mcp.head("/health")
+def health_check():
+    """Health check endpoint for Render and other monitoring services"""
+    return {"status": "healthy", "service": "News MCP Server"}
+
+# Root endpoint for basic info
+@mcp.get("/")
+def root():
+    """Root endpoint with basic server info"""
+    return {
+        "service": "News MCP Server",
+        "status": "running",
+        "mcp_endpoint": "/mcp",
+        "health_endpoint": "/health"
+    }
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     host = "0.0.0.0"
     print(f"Starting FastMCP server on {host}:{port}")
-    mcp.run(
-        transport="http",
-        host=host,
-        port=port,
-        stateless_http=True
-    )
+    
+    # Add error handling
+    try:
+        mcp.run(
+            transport="http",
+            host=host,
+            port=port,
+            stateless_http=True
+        )
+    except Exception as e:
+        print(f"Error starting server: {e}")
+        raise
