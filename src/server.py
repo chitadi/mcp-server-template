@@ -79,7 +79,9 @@ if __name__ == "__main__":
             transport="http",
             host=host,
             port=port,
-            stateless_http=True
+            # 👇 this makes header checks less strict
+            stateless_http=True,
+            require_accept_header=False
         )
     except Exception as e:
         print(f"Error starting server: {e}")
