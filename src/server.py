@@ -69,30 +69,11 @@ def latest_videos(hours: int = 24, limit: int = 50) -> List[Dict[str, Any]]:
         for r in rows
     ]
 
-# Health check endpoints for Render
-@mcp.get("/health")
-@mcp.head("/health")
-def health_check():
-    """Health check endpoint for Render and other monitoring services"""
-    return {"status": "healthy", "service": "News MCP Server"}
-
-# Root endpoint for basic info
-@mcp.get("/")
-def root():
-    """Root endpoint with basic server info"""
-    return {
-        "service": "News MCP Server",
-        "status": "running",
-        "mcp_endpoint": "/mcp",
-        "health_endpoint": "/health"
-    }
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     host = "0.0.0.0"
     print(f"Starting FastMCP server on {host}:{port}")
     
-    # Add error handling
     try:
         mcp.run(
             transport="http",
