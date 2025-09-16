@@ -38,7 +38,7 @@ VALID_CATEGORIES = {"tech", "startups", "business", "politics", "finance", "misc
 @mcp.tool(description="Return recent articles from the last `hours`, optionally filtered by one or more categories.")
 def latest_articles(
     hours: int = 24,
-    limit: int = 1000,
+    limit: int = 2000,
     categories: Optional[List[str]] = None
 ) -> List[Dict[str, Any]]:
     conn = open_latest_db()
