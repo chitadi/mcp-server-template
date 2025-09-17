@@ -6,32 +6,36 @@ from fastmcp import FastMCP
 # ✅ One MCP instance only
 mcp = FastMCP("News MCP Server")
 
-@mcp.tool(description="Simple greeting function for testing connectivity",
-    parameters=[
-        {
-            "name": "name",
-            "type": "string",
-            "description": "Name to greet",
-            "required": False,
-            "default": "World",
-            "example": "Poke"
-        }
-    ],
-    returns="""
-        "message": "Hello, {name}! Welcome to the News MCP Server."
-    """)
+@mcp.tool(description="""
+    Simple greeting function for testing connectivity.
+
+    Parameters:
+    - name (str, optional, default="World"): Name to greet.
+
+    Returns:
+    - string with one field:
+    "Hello, name! Welcome to the News MCP Server."
+
+    Examples:
+    - greet()
+    - greet(name="Poke")
+""")
 def greet(name: str) -> str:
     return f"Hello, {name}! Welcome to our MCP server on Render!"
 
-@mcp.tool(description="Get information about this MCP server's capabilities and status",
-    returns="""
-    {
-        "server_name": "News MCP Server",
-        "version": "1.0.0",
-        "environment": os.environ.get("ENVIRONMENT", "development"),
-        "python_version": os.sys.version.split()[0]
-    }
-    """)
+@mcp.tool(description="""
+Get information about this MCP server's capabilities and status.
+
+Returns:
+- dict with fields:
+  {
+    "name": "News MCP Server",
+    "version": "1.0.0",
+    "environment": os.environ.get("ENVIRONMENT", "development"),
+    "python_version": os.sys.version.split()[0]
+  }
+Use this to understand the server's capabilities before making content requests.
+""")
 def get_server_info() -> dict:
     """
     Returns metadata about this MCP server including version, article count,
@@ -46,8 +50,23 @@ def get_server_info() -> dict:
         "python_version": os.sys.version.split()[0]
     }
 
-@mcp.tool(description="Get comprehensive usage guide and best practices for this MCP server",
-    returns="A structured dictionary of server info, categories, query workflow, examples, best practices, and common errors")
+@mcp.tool(description="""
+Get comprehensive usage guide and best practices for this MCP server.
+
+Returns:
+- dict containing:
+  - server_info
+  - available_categories
+  - query_workflow
+  - example_queries
+  - best_practices
+  - common_errors
+
+Intended usage:
+- Agents like Poke should call this once on startup.
+- Provides onboarding instructions, valid category list, and formatting rules.
+""")
+          
 def get_usage_guide() -> dict:
     """
     Returns a structured onboarding guide for agents (e.g., Poke).
@@ -175,46 +194,28 @@ def open_latest_db() -> sqlite3.Connection:
 # --- Categories ---
 VALID_CATEGORIES = {"tech", "startups", "business", "politics", "finance", "miscellaneous"}
 
-@mcp.tool(description="Retrieve latest news articles filtered by categories",
-    parameters=[
-        {
-            "name": "categories",
-            "type": "array",
-            "description": "List of categories to filter articles by. Allowed: tech, startups, business, finance, politics, miscellaneous",
-            "required": True,
-            "items": {"type": "string"},
-            "example": ["tech", "politics"]
-        },
-        {
-            "name": "hours",
-            "type": "integer",
-            "description": "Number of hours to look back for articles",
-            "required": False,
-            "default": 24,
-            "example": 72
-        },
-        {
-            "name": "limit",
-            "type": "integer",
-            "description": "Maximum number of articles to return",
-            "required": False,
-            "default": 1000,
-            "example": 500
-        }
-    ],
-    returns="""
-    [
-        {
-            "title": "Article title",
-            "url": "https://example.com/article",
-            "source": "Publication name",
-            "category": "tech",
-            "published_at": "2025-09-17T14:30:00Z"
-        },
-        ...
-    ]
-    """
-)
+@mcp.tool(description="""
+Retrieve latest news articles filtered by categories.
+
+Parameters:
+- categories (List[str], required): Allowed values: tech, startups, business, finance, politics, miscellaneous
+- hours (int, optional, default=24): Number of hours to look back
+- limit (int, optional, default=1000): Maximum number of articles to return
+
+Returns:
+- List of dicts, each containing:
+  { "title": str, "url": str, "source": str, "category": str, "published_at": str }
+
+Best practices:
+1. Always pass categories as a list, even for one: ["tech"]
+2. Combine categories for overlapping domains (e.g. ["tech","politics"])
+3. Use limit as 1000 anyway since semantic filtering will follow
+
+Examples:
+- latest_articles(categories=["tech","politics"], hours=24, limit=1000)
+- latest_articles(categories=["startups","business"], hours=24, limit=1000)
+""")
+
 def latest_articles(
     categories: List[str],
     hours: int = 24,
@@ -269,47 +270,30 @@ def latest_articles(
         for r in rows
     ]
 
-@mcp.tool(
-    description="Retrieve the most recent YouTube videos stored in the database",
-    parameters=[
-        {
-            "name": "hours",
-            "type": "integer",
-            "description": "Number of hours to look back for videos",
-            "required": False,
-            "default": 24,
-            "example": 48
-        },
-        {
-            "name": "limit",
-            "type": "integer",
-            "description": "Maximum number of videos to return",
-            "required": False,
-            "default": 50,
-            "example": 20
-        },
-        {
-            "name": "channel",
-            "type": "string",
-            "description": "Optional: filter videos by channel name",
-            "required": False,
-            "example": "Bloomberg"
-        }
-    ],
-    returns="""
-    [
-        {
-            "title": "Video title",
-            "channel": "Channel name",
-            "url": "https://example.com/video",
-            "published_at": "2025-09-17T14:30:00Z"
-        },
-        ...
-    ]
-    """
-)
+@mcp.tool(description="""
+Retrieve the most recent YouTube videos stored in the database.
+
+Parameters:
+- hours (int, optional, default=168): Number of hours to look back
+- limit (int, optional, default=50): Maximum number of videos to return
+- channel (str, optional): Filter videos by channel name, ONLY IF GIVEN EXPLICITLY
+
+Returns:
+- List of dicts, each containing:
+  { "title": str, "url": str, "channel": str, "published_at": str }
+
+Best practices:
+1. Use channel filter for targeted requests, ONLY IF GIVEN EXPLICITLY
+2. Adjust hours for breaking vs backlog
+3. Combine with semantic filtering for topics (e.g. "AI regulation")
+
+Examples:
+- latest_videos(hours=168, limit=50)
+- latest_videos(hours=72, limit=10, channel="Bloomberg")
+""")
+          
 def latest_videos(
-    hours: int = 24,
+    hours: int = 168,
     limit: int = 50,
     channel: Optional[str] = None
 ) -> List[Dict[str, Any]]:
